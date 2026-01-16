@@ -12,6 +12,7 @@ import {
 import StatBar from "@/components/StatBar";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import PlayerAvatar from "@/components/PlayerAvatar";
 
 // 🔧 CONFIGURACIÓN
 // Usamos la URL base sin endpoints específicos para evitar errores 404
@@ -117,6 +118,8 @@ export default function HomeScreen() {
           Nivel {player?.level}
         </ThemedText>
       </View>
+      {/* 👇 AQUÍ VA TU NUEVO AVATAR DINÁMICO 👇 */}
+      <PlayerAvatar health={player?.health || 0} lives={player?.lives || 0} />
 
       {/* BARRAS DE ESTADÍSTICAS */}
       <View style={styles.statsContainer}>
