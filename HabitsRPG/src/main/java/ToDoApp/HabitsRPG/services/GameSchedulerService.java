@@ -10,9 +10,12 @@ import java.util.List;
 public class GameSchedulerService {
 
     private final PlayerRepository playerRepository;
+    private final PetService petService;
 
-    public GameSchedulerService(PlayerRepository playerRepository) {
+    public GameSchedulerService(PlayerRepository playerRepository,
+                                PetService petService) {
         this.playerRepository = playerRepository;
+        this.petService = petService;
     }
 
     // Se ejecuta cada 1 hora (0 minutos, 0 segundos)
@@ -26,5 +29,12 @@ public class GameSchedulerService {
         }
         playerRepository.saveAll(players);
         System.out.println("Se han recuperado 5 puntos de energía para todos los jugadores.");
+    }
+
+    // Se ejecuta cada 6 horas
+    @Scheduled(cron = "0 0 */6 * * *")
+    public void applyPetMoodDecay() {
+        petService.applyMoodDecay();
+        System.out.println("Se ha aplicado decaimiento de humor a las mascotas activas.");
     }
 }
