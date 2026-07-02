@@ -1,12 +1,14 @@
 package ToDoApp.HabitsRPG.repositories;
 
 import ToDoApp.HabitsRPG.models.HabitCompletion;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,4 +36,14 @@ public interface HabitCompletionRepository extends JpaRepository<HabitCompletion
     List<LocalDate> findCompletedDatesByHabitsAndPlayer(
             @Param("habitIds") List<Long> habitIds,
             @Param("playerId") Long playerId);
+
+    @Query("SELECT hc FROM HabitCompletion hc JOIN FETCH hc.habit " +
+           "WHERE hc.player.id = :playerId ORDER BY hc.completedDate DESC")
+    List<HabitCompletion> findTop10ByPlayerIdOrderByCompletedDateDesc(
+            @Param("playerId") Long playerId, Pageable pageable);
+
+    @Query("SELECT COUNT(hc) FROM HabitCompletion hc " +
+           "WHERE hc.player.id = :playerId AND hc.createdAt >= :since")
+    long countCompletionsSince(@Param("playerId") Long playerId,
+                               @Param("since") LocalDateTime since);
 }

@@ -5,9 +5,11 @@ import ToDoApp.HabitsRPG.models.Enum.EquipSlot;
 import ToDoApp.HabitsRPG.models.Enum.ItemType;
 import ToDoApp.HabitsRPG.models.Enum.Rarity;
 import ToDoApp.HabitsRPG.models.Habit;
+import ToDoApp.HabitsRPG.models.Pet;
 import ToDoApp.HabitsRPG.models.Player;
 import ToDoApp.HabitsRPG.models.ShopItem;
 import ToDoApp.HabitsRPG.repositories.HabitRepository;
+import ToDoApp.HabitsRPG.repositories.PetRepository;
 import ToDoApp.HabitsRPG.repositories.PlayerRepository;
 import ToDoApp.HabitsRPG.repositories.ShopItemRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -19,7 +21,8 @@ public class DataSeeder {
 
     @Bean
     CommandLineRunner initDatabase(HabitRepository habitRepository, PlayerRepository playerRepository,
-                                   ShopItemRepository shopItemRepository) {
+                                   ShopItemRepository shopItemRepository,
+                                   PetRepository petRepository) {
         return args -> {
             // 1. Crear el JUGADOR si no existe
             Player defaultPlayer;
@@ -119,7 +122,85 @@ public class DataSeeder {
 
                 System.out.println("✅ Tienda inicializada con 8 ítems.");
             }
+
+            // 4. Crear ESPECIES DE MASCOTAS si no existen
+            if (petRepository.count() == 0) {
+                // Pet species are created FIRST so we know their IDs for ShopItem.effectValue
+                Pet fenix = createPetSpecies("Fénix",
+                        "Un ave majestuosa que renace de las cenizas. Resiliente y leal.",
+                        "https://api.dicebear.com/9.x/icons/svg?icon=phoenix&backgroundColor=ff6b35",
+                        0.1, 4, 5, 200, 0);
+
+                Pet gato = createPetSpecies("Gato Sombrío",
+                        "Un felino misterioso que refleja tu estado de ánimo. Moody pero adorable.",
+                        "https://api.dicebear.com/9.x/icons/svg?icon=cat&backgroundColor=2d2d2d",
+                        0.3, 2, 3, 150, 0);
+
+                Pet dragon = createPetSpecies("Dragón Dorado",
+                        "Una criatura legendaria de escamas doradas. Casi imposible de alterar.",
+                        "https://api.dicebear.com/9.x/icons/svg?icon=dragon&backgroundColor=ffd700",
+                        0.05, 5, 6, 500, 0);
+
+                Pet slime = createPetSpecies("Slime",
+                        "Una burbuja saltarina que rebosa energía. Cambia de humor rápidamente.",
+                        "https://api.dicebear.com/9.x/icons/svg?icon=ghost&backgroundColor=44dd88",
+                        0.5, 3, 4, 100, 0);
+
+                petRepository.save(fenix);
+                petRepository.save(gato);
+                petRepository.save(dragon);
+                petRepository.save(slime);
+
+                // Pet IDs are now 1, 2, 3, 4 (auto-increment)
+                // Create corresponding SHOP items with PET type
+                // effectValue stores the Pet species ID for lookup in ShopService
+                shopItemRepository.save(createShopItem(
+                        "Fénix", "Un ave majestuosa que renace de las cenizas. Resiliente y leal.",
+                        ItemType.PET, Rarity.EPIC, 200, 0,
+                        EffectType.COSMETIC, 1, null, null,
+                        "https://api.dicebear.com/9.x/icons/svg?icon=phoenix&backgroundColor=ff6b35",
+                        true, 1));
+
+                shopItemRepository.save(createShopItem(
+                        "Gato Sombrío", "Un felino misterioso que refleja tu estado de ánimo.",
+                        ItemType.PET, Rarity.UNCOMMON, 150, 0,
+                        EffectType.COSMETIC, 2, null, null,
+                        "https://api.dicebear.com/9.x/icons/svg?icon=cat&backgroundColor=2d2d2d",
+                        true, 1));
+
+                shopItemRepository.save(createShopItem(
+                        "Dragón Dorado", "Una criatura legendaria de escamas doradas.",
+                        ItemType.PET, Rarity.LEGENDARY, 500, 0,
+                        EffectType.COSMETIC, 3, null, null,
+                        "https://api.dicebear.com/9.x/icons/svg?icon=dragon&backgroundColor=ffd700",
+                        true, 1));
+
+                shopItemRepository.save(createShopItem(
+                        "Slime", "Una burbuja saltarina que rebosa energía.",
+                        ItemType.PET, Rarity.COMMON, 100, 0,
+                        EffectType.COSMETIC, 4, null, null,
+                        "https://api.dicebear.com/9.x/icons/svg?icon=ghost&backgroundColor=44dd88",
+                        true, 1));
+
+                System.out.println("✅ Mascotas inicializadas: Fénix, Gato Sombrío, Dragón Dorado, Slime.");
+            }
         };
+    }
+
+    private Pet createPetSpecies(String name, String description, String imageUrl,
+                                  double happinessDecay, int sadnessThreshold,
+                                  int angerThreshold, int priceGold, int priceGems) {
+        Pet pet = new Pet();
+        pet.setName(name);
+        pet.setDescription(description);
+        pet.setImageUrl(imageUrl);
+        pet.setItemType(ItemType.PET);
+        pet.setHappinessDecay(happinessDecay);
+        pet.setSadnessThreshold(sadnessThreshold);
+        pet.setAngerThreshold(angerThreshold);
+        pet.setPriceGold(priceGold);
+        pet.setPriceGems(priceGems);
+        return pet;
     }
 
     private ShopItem createShopItem(String name, String description,

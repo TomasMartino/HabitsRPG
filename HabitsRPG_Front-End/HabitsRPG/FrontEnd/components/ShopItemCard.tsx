@@ -22,7 +22,7 @@ export interface ShopItem {
   id: number;
   name: string;
   description: string;
-  itemType: 'CONSUMABLE' | 'COSMETIC' | 'BOOST';
+  itemType: 'CONSUMABLE' | 'COSMETIC' | 'BOOST' | 'PET';
   rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
   priceGold: number;
   priceGems: number;
@@ -52,6 +52,7 @@ export default function ShopItemCard({ item, onBuy, playerGold, playerGems }: Sh
   const itemTypeIcon =
     item.itemType === 'CONSUMABLE' ? '🧪' :
     item.itemType === 'COSMETIC' ? '👗' :
+    item.itemType === 'PET' ? '🐾' :
     '⚡';
 
   return (

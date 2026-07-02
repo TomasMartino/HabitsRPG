@@ -7,7 +7,7 @@ export interface ShopItem {
   id: number;
   name: string;
   description: string;
-  itemType: 'CONSUMABLE' | 'COSMETIC' | 'BOOST';
+  itemType: 'CONSUMABLE' | 'COSMETIC' | 'BOOST' | 'PET';
   rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
   priceGold: number;
   priceGems: number;

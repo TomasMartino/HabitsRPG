@@ -15,13 +15,16 @@ import StreakBadge from "@/components/StreakBadge";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import PlayerAvatar from "@/components/PlayerAvatar";
+import PetAvatar from "@/components/PetAvatar";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useStreakStore } from "@/stores/streakStore";
+import { usePetStore } from "@/stores/petStore";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { player, isLoading, fetchPlayer, sleep } = usePlayerStore();
   const { streaks, fetchAllStreaks } = useStreakStore();
+  const { activePet, loading: petLoading, fetchActivePet } = usePetStore();
 
   // --- 1. OBTENER DATOS (GET) ---
 
@@ -32,7 +35,7 @@ export default function HomeScreen() {
   }, []);
 
   const loadDashboardData = async () => {
-    await Promise.all([fetchPlayer(), fetchAllStreaks()]);
+    await Promise.all([fetchPlayer(), fetchAllStreaks(), fetchActivePet()]);
   };
 
   // --- 2. ACCIONES (POST) ---
@@ -77,6 +80,9 @@ export default function HomeScreen() {
         </View>
         {/* 👇 AQUÍ VA TU NUEVO AVATAR DINÁMICO 👇 */}
         <PlayerAvatar health={player?.health || 0} lives={player?.lives || 0} />
+
+        {/* MASCOTA ACTIVA */}
+        <PetAvatar activePet={activePet} loading={petLoading} />
 
         {/* BARRAS DE ESTADÍSTICAS */}
         <View style={styles.statsContainer}>

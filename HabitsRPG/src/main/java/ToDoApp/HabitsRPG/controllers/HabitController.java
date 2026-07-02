@@ -79,7 +79,8 @@ public class HabitController {
                     "currentStreak", result.currentStreak(),
                     "longestStreak", result.longestStreak(),
                     "streakMultiplier", result.multiplier(),
-                    "leveledUp", result.leveledUp()
+                    "leveledUp", result.leveledUp(),
+                    "activePet", result.activePet()
             ));
         } catch (DuplicateCompletionException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)

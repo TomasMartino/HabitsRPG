@@ -19,13 +19,14 @@ import { useShopStore, ShopItem, InventoryItem } from '@/stores/shopStore';
 import { usePlayerStore } from '@/stores/playerStore';
 
 type ViewMode = 'catalog' | 'inventory';
-type CategoryFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'BOOST';
+type CategoryFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'BOOST' | 'PET';
 
 const CATEGORIES: { key: CategoryFilter; label: string; icon: string }[] = [
   { key: 'ALL', label: 'Todo', icon: '📋' },
   { key: 'CONSUMABLE', label: 'Consumibles', icon: '🧪' },
   { key: 'COSMETIC', label: 'Cosméticos', icon: '👗' },
   { key: 'BOOST', label: 'Mejoras', icon: '⚡' },
+  { key: 'PET', label: 'Mascotas', icon: '🐾' },
 ];
 
 export default function ShopScreen() {

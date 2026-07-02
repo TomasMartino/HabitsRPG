@@ -7,6 +7,7 @@ import ToDoApp.HabitsRPG.exceptions.*;
 import ToDoApp.HabitsRPG.models.*;
 import ToDoApp.HabitsRPG.models.Enum.EquipSlot;
 import ToDoApp.HabitsRPG.models.Enum.ItemType;
+import ToDoApp.HabitsRPG.models.Enum.PetMood;
 import ToDoApp.HabitsRPG.repositories.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +22,21 @@ public class ShopService {
     private final ShopItemRepository shopItemRepository;
     private final PlayerInventoryRepository inventoryRepository;
     private final PlayerEquipmentRepository equipmentRepository;
+    private final PlayerPetRepository playerPetRepository;
+    private final PetRepository petRepository;
 
     public ShopService(PlayerRepository playerRepository,
                        ShopItemRepository shopItemRepository,
                        PlayerInventoryRepository inventoryRepository,
-                       PlayerEquipmentRepository equipmentRepository) {
+                       PlayerEquipmentRepository equipmentRepository,
+                       PlayerPetRepository playerPetRepository,
+                       PetRepository petRepository) {
         this.playerRepository = playerRepository;
         this.shopItemRepository = shopItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.equipmentRepository = equipmentRepository;
+        this.playerPetRepository = playerPetRepository;
+        this.petRepository = petRepository;
     }
 
     public List<ShopItem> getCatalog(ItemType category) {
@@ -85,6 +92,34 @@ public class ShopService {
             applyConsumableEffect(player, item);
             playerRepository.save(player);
             consumed = true;  // no inventory row for consumed items
+        } else if (item.getItemType() == ItemType.PET) {
+            // PET: find the matching species by effectValue (stores Pet ID)
+            Long petId = (long) item.getEffectValue();
+            Pet petSpecies = petRepository.findById(petId)
+                    .orElseThrow(() -> new PetNotFoundException("PET_NOT_FOUND",
+                            "Pet species not found for this item"));
+
+            // Reject if player already owns this pet species
+            if (playerPetRepository.existsByPlayerIdAndPetId(playerId, petId)) {
+                throw new PetNotFoundException("ALREADY_OWNED",
+                        "Ya posees esta mascota");
+            }
+
+            // Create PlayerPet — auto-activate if player has no active pet
+            boolean hasActivePet = playerPetRepository
+                    .findByPlayerIdAndIsActiveTrue(playerId)
+                    .isPresent();
+
+            PlayerPet newPet = new PlayerPet();
+            newPet.setPlayerId(playerId);
+            newPet.setPetId(petId);
+            newPet.setCurrentMood(PetMood.NEUTRAL);
+            newPet.setAffection(100); // start with some affection
+            newPet.setActive(!hasActivePet); // auto-activate if none active
+            newPet.setLastMoodUpdate(LocalDateTime.now());
+            playerPetRepository.save(newPet);
+
+            consumed = true; // no inventory row
         } else {
             // COSMETIC or BOOST → inventory
             PlayerInventory inv = inventoryRepository

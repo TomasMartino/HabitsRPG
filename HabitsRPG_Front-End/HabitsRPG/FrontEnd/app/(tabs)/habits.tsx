@@ -72,9 +72,15 @@ export default function HabitsScreen() {
       // 3. IMPORTANTE: Cerramos el modal de detalle después de completar
       setSelectedHabit(null);
     } catch (error: any) {
-      console.error(error);
-      if (error.response && error.response.data) {
-        Alert.alert("No se pudo completar", String(error.response.data));
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      if (status === 409) {
+        Alert.alert("🕐 Ya completado", "Ya completaste este hábito hoy. ¡Vuelve mañana!");
+      } else if (data?.message) {
+        Alert.alert("No se pudo completar", data.message);
+      } else if (data?.error) {
+        Alert.alert("No se pudo completar", data.error);
       } else {
         Alert.alert("Error", "Ocurrió un error al conectar.");
       }
