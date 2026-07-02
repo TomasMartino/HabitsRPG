@@ -1,6 +1,9 @@
 package ToDoApp.HabitsRPG.services;
+
+import ToDoApp.HabitsRPG.models.CompletableResult;
 import ToDoApp.HabitsRPG.models.Habit;
 import ToDoApp.HabitsRPG.models.Player;
+import ToDoApp.HabitsRPG.models.StreakResult;
 import ToDoApp.HabitsRPG.repositories.HabitRepository;
 import ToDoApp.HabitsRPG.repositories.PlayerRepository;
 import org.springframework.stereotype.Service;
@@ -9,48 +12,57 @@ import org.springframework.stereotype.Service;
 public class HabitService {
 
     private final HabitRepository habitRepository;
+    private final PlayerService playerService;
     private final PlayerRepository playerRepository;
+    private final StreakService streakService;
 
-    public HabitService(HabitRepository habitRepository, PlayerRepository playerRepository) {
+    public HabitService(HabitRepository habitRepository, PlayerService playerService,
+                        PlayerRepository playerRepository, StreakService streakService) {
         this.habitRepository = habitRepository;
+        this.playerService = playerService;
         this.playerRepository = playerRepository;
+        this.streakService = streakService;
     }
 
-    public Player completeHabit(Long playerId, Long habitId) {
-        Player player = playerRepository.findById(playerId)
-                .orElseThrow(() -> new RuntimeException("Jugador no encontrado"));
+    public CompletableResult completeHabit(Long habitId, Long playerId) {
         Habit habit = habitRepository.findById(habitId)
                 .orElseThrow(() -> new RuntimeException("Hábito no encontrado"));
 
         if ("POSITIVE".equals(habit.getType())) {
-            // Lógica de hábito bueno (gasta energía)
+            Player player = playerRepository.findById(playerId)
+                    .orElseThrow(() -> new RuntimeException("Jugador no encontrado"));
+
+            // 1. Record streak FIRST (may throw 409 if duplicate)
+            StreakResult streak = streakService.recordCompletion(habitId, playerId);
+
+            // 2. Get rewards (already multiplied by streak)
+            int xpEarned = streak.xpEarned();
+            int goldEarned = streak.goldEarned();
+
             int cost = habit.getEnergyCost();
+            boolean leveledUp = false;
             if (player.getEnergy() >= cost) {
                 player.setEnergy(player.getEnergy() - cost);
-                player.setXp(player.getXp() + habit.getXpReward());
-                player.setGold(player.getGold() + habit.getGoldReward());
             } else {
-                player.setXp(player.getXp() + (habit.getXpReward() / 2));
-                player.setGold(player.getGold() + (habit.getGoldReward() / 2));
                 player.setEnergy(0);
+                xpEarned /= 2;
+                goldEarned /= 2;
             }
+
+            player.setGold(player.getGold() + goldEarned);
+            leveledUp = player.gainXp(xpEarned);
+            playerRepository.save(player);
+
+            return new CompletableResult(player, streak.currentStreak(),
+                    streak.longestStreak(), streak.multiplier(),
+                    xpEarned, goldEarned, leveledUp);
         } else {
-            // Lógica de hábito MALO (RECOBRA energía pero quita vida)
-            // Usamos el mismo energyCost pero para SUMAR
-            int energyRecovery = habit.getEnergyCost();
-
-            player.setHealth(player.getHealth() - habit.getHpPenalty());
-            player.setEnergy(Math.min(100, player.getEnergy() + energyRecovery));
-
-            // Los malos hábitos no deberían dar XP ni Oro (o incluso quitar)
-            player.setXp(player.getXp());
-
-            if (player.getHealth() <= 0) {
-                player.setLives(player.getLives() - 1);
-                player.setHealth(100);
-            }
+            // NEGATIVE: no streak tracking for negative habits
+            Player player = playerService.takeDamage(playerId, habit.getHpPenalty());
+            int nuevaEnergia = Math.min(100, player.getEnergy() + habit.getEnergyCost());
+            player.setEnergy(nuevaEnergia);
+            playerRepository.save(player);
+            return new CompletableResult(player, 0, 0, 1.0, 0, 0, false);
         }
-
-        return playerRepository.save(player);
     }
 }

@@ -38,12 +38,22 @@ export default function TabLayout() {
 
       {/* Pestaña 2: HÁBITOS (Tu archivo habits.tsx) */}
       <Tabs.Screen
-        name="habits" // ⚠️ IMPORTANTE: Debe coincidir con el nombre de tu archivo (habits.tsx)
+        name="habits"
         options={{
           title: "Hábitos",
-          // 'list.bullet' es un ícono común para listas. Si te da error, prueba 'paperplane.fill' de nuevo.
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="list.bullet" color={color} />
+          ),
+        }}
+      />
+
+      {/* Pestaña 3: TIENDA (Reemplaza explore.tsx) */}
+      <Tabs.Screen
+        name="shop"
+        options={{
+          title: "Tienda",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="cart.fill" color={color} />
           ),
         }}
       />

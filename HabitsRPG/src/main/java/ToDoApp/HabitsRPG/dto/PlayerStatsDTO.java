@@ -17,4 +17,5 @@ public class PlayerStatsDTO {
     private int xpToNextLevel; // Campo clave
     private int gold;
     private int lives;
+    private int gems;
 }

@@ -8,9 +8,11 @@ import org.springframework.stereotype.Service;
 public class PlayerService {
 
     private final PlayerRepository playerRepository;
+    private final ShopService shopService;
 
-    public PlayerService(PlayerRepository playerRepository) {
+    public PlayerService(PlayerRepository playerRepository, ShopService shopService) {
         this.playerRepository = playerRepository;
+        this.shopService = shopService;
     }
 
     public Player createPlayer(Player player) {
@@ -88,29 +90,16 @@ public class PlayerService {
         return playerRepository.save(player);
     }
 
-    // 🛒 NUEVO: Lógica de Compra de Poción
+    /**
+     * @deprecated Use ShopService.purchaseItem(playerId, healthPotionItemId) instead.
+     * Kept for backward compatibility — delegates to ShopService internally.
+     */
+    @Deprecated
     public Player buyHealthPotion(Long playerId) {
-        Player player = playerRepository.findById(playerId)
+        // Delegate to ShopService (item ID 1 = seeded health potion)
+        shopService.purchaseItem(playerId, 1L);
+        return playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Jugador no encontrado"));
-
-        int potionCost = 50;
-        int healAmount = 20;
-
-        // 1. Validar si tiene dinero suficiente
-        if (player.getGold() < potionCost) {
-            throw new RuntimeException("¡No tienes suficiente oro! Necesitas " + potionCost);
-        }
-
-        // 2. Validar si ya tiene la salud llena (opcional, pero buena práctica)
-        if (player.getHealth() >= 100) {
-            throw new RuntimeException("¡Tu salud ya está al máximo!");
-        }
-
-        // 3. Ejecutar la transacción
-        player.setGold(player.getGold() - potionCost); // Cobrar
-        player.setHealth(Math.min(player.getHealth() + healAmount, 100)); // Curar (sin pasar de 100)
-
-        return playerRepository.save(player);
     }
 
 }

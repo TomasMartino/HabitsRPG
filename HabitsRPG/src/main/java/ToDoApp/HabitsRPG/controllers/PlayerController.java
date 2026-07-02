@@ -37,9 +37,10 @@ public class PlayerController {
                 player.getXp(),
                 player.getLevel(),
                 player.getXpProgress(),
-                player.getXpToNextLevel(), // Este es el campo que daba problemas antes
+                player.getXpToNextLevel(),
                 player.getGold(),
-                player.getLives()
+                player.getLives(),
+                player.getGems()
         );
 
         return ResponseEntity.ok(statsDTO);
