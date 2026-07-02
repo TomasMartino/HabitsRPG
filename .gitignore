@@ -1,0 +1,5 @@
+# IDE
+.vscode/
+
+# AI agent / tooling artifacts
+.atl/
