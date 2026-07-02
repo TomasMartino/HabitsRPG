@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,83 +7,72 @@ import {
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
+  View,
 } from "react-native";
 
 // Componentes propios
 import CreateHabitModal from "@/components/CreateHabitModal";
 import HabitCard from "@/components/HabitCard";
+import HabitDetailModal from "@/components/HabitDetailModal";
+import StreakBadge from "@/components/StreakBadge";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-
-// 🔧 CONFIGURACIÓN
-const API_URL = "http://192.168.1.36:8080/api";
-const PLAYER_ID = 1;
+import { useHabitStore } from "@/stores/habitStore";
+import { usePlayerStore } from "@/stores/playerStore";
+import { useStreakStore } from "@/stores/streakStore";
 
 export default function HabitsScreen() {
-  const [habits, setHabits] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { habits, isLoading: habitsLoading, fetchHabits, createHabit, completeHabit } =
+    useHabitStore();
+  const { fetchPlayer } = usePlayerStore();
+  const { habitStreaks, fetchAllStreaks } = useStreakStore();
   const [refreshing, setRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
 
-  // --- 1. CARGAR HÁBITOS (GET) ---
-  const fetchHabits = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/habits/player/${PLAYER_ID}`);
-      setHabits(response.data);
-    } catch (error) {
-      console.error("Error cargando hábitos:", error);
-      Alert.alert("Error", "No se pudo conectar con el servidor");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  // Estados para los Modales
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<any>(null);
+
+  // --- 1. CARGAR HÁBITOS + RACHAS (GET) ---
 
   useEffect(() => {
-    fetchHabits();
+    loadData();
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const loadData = async () => {
+    await Promise.all([fetchHabits(), fetchAllStreaks()]);
+  };
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchHabits();
+    await loadData();
+    setRefreshing(false);
   }, []);
 
   // --- 2. COMPLETAR HÁBITO (POST) ---
-  const handleAction = async (habitId: number) => {
+  // Esta función se ejecuta CUANDO le das a "Misión Cumplida" dentro del Modal
+  const handleCompleteHabit = async (habitId: number) => {
     try {
-      // Llamamos al endpoint
-      const response = await axios.post(
-        `${API_URL}/habits/${habitId}/complete/${PLAYER_ID}`
-      );
-      const updatedPlayer = response.data;
+      const updatedPlayer = await completeHabit(habitId);
 
-      // 👇👇 AQUÍ ESTÁ LA LÓGICA QUE FALTABA 👇👇
-
-      // CASO A: GAME OVER (Muerto total)
+      // Lógica de Feedback RPG
       if (updatedPlayer.health === 0 && updatedPlayer.lives === 0) {
         Alert.alert(
           "💀 GAME OVER",
-          "Te has quedado sin vidas. Tu personaje ha caído.\n\nVe a la pantalla de inicio y 'Duerme' para reiniciar."
+          "Te has quedado sin vidas. Tu personaje ha caído.\n\nVe a la pantalla de inicio y 'Duerme' para reiniciar.",
         );
-      }
-      // CASO B: PERDIÓ UNA VIDA (Detectamos salud llena de golpe tras un daño)
-      // Nota: Esta es una forma indirecta de saber si revivió
-      else if (updatedPlayer.health === 100 && updatedPlayer.lives < 3) {
-        // Asumiendo que 3 es el max
+      } else if (updatedPlayer.health === 100 && updatedPlayer.lives < 3) {
         Alert.alert(
           "💔 ¡Cuidado!",
-          `Has perdido una vida. Te quedan: ${updatedPlayer.lives}`
+          `Has perdido una vida. Te quedan: ${updatedPlayer.lives}`,
         );
       }
-      // CASO C: SOLO DAÑO O ÉXITO
-      else {
-        // Feedback corto para no molestar tanto
-        // Alert.alert("¡Hecho!", "Progreso registrado.");
-        // O puedes no poner nada si prefieres que sea rápido
-      }
+
+      // Refrescar datos del jugador después de completar hábito
+      fetchPlayer();
+      // 3. IMPORTANTE: Cerramos el modal de detalle después de completar
+      setSelectedHabit(null);
     } catch (error: any) {
       console.error(error);
-      // Mensaje de error inteligente (ej: "No tienes energía")
       if (error.response && error.response.data) {
         Alert.alert("No se pudo completar", String(error.response.data));
       } else {
@@ -95,18 +83,16 @@ export default function HabitsScreen() {
 
   // --- 3. CREAR NUEVO HÁBITO (POST) ---
   const handleCreateHabit = async (newHabitData: any) => {
-    try {
-      await axios.post(`${API_URL}/habits/player/${PLAYER_ID}`, newHabitData);
-      fetchHabits(); // Recargar lista
+    const ok = await createHabit(newHabitData);
+    if (ok) {
       Alert.alert("Éxito", "Hábito creado correctamente");
-    } catch (error) {
-      console.error(error);
+    } else {
       Alert.alert("Error", "No se pudo crear el hábito");
     }
   };
 
   // --- 4. RENDERIZADO ---
-  if (loading) {
+  if (habitsLoading) {
     return (
       <ThemedView style={styles.center}>
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -123,9 +109,23 @@ export default function HabitsScreen() {
       <FlatList
         data={habits}
         keyExtractor={(item: any) => item.id.toString()}
-        renderItem={({ item }) => (
-          <HabitCard habit={item} onAction={handleAction} />
-        )}
+        renderItem={({ item }) => {
+          const streak = habitStreaks.get(item.id);
+          const streakCount = streak?.currentStreak ?? 0;
+          return (
+            <View>
+              <View style={styles.cardRow}>
+                <HabitCard
+                  habit={item}
+                  onAction={() => setSelectedHabit(item)}
+                />
+                {streakCount > 0 && (
+                  <StreakBadge streakCount={streakCount} size="small" />
+                )}
+              </View>
+            </View>
+          );
+        }}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -140,16 +140,24 @@ export default function HabitsScreen() {
       {/* BOTÓN FLOTANTE (+) */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={() => setCreateModalVisible(true)}
       >
         <Ionicons name="add" size={30} color="white" />
       </TouchableOpacity>
 
-      {/* MODAL DE CREACIÓN */}
+      {/* MODAL 1: CREAR HÁBITO */}
       <CreateHabitModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
         onCreate={handleCreateHabit}
+      />
+
+      {/* MODAL 2: DETALLE DE MISIÓN (NUEVO) */}
+      <HabitDetailModal
+        visible={!!selectedHabit} // Se muestra si hay un hábito seleccionado
+        habit={selectedHabit}
+        onClose={() => setSelectedHabit(null)}
+        onComplete={(habit: any) => handleCompleteHabit(habit.id)}
       />
     </ThemedView>
   );
@@ -172,13 +180,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 80, // Espacio extra para que el botón no tape el último item
+    paddingBottom: 80,
   },
   emptyText: {
     textAlign: "center",
     marginTop: 50,
     color: "#888",
     fontSize: 16,
+  },
+  cardRow: {
+    position: 'relative',
   },
   fab: {
     position: "absolute",

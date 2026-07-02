@@ -10,20 +10,32 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons"; // Necesario para iconos de basura/agregar
+
+// Definimos la estructura de una Subtarea
+interface SubTask {
+  name: string;
+  type: "CHECKLIST" | "TIMER";
+  targetValue: string;
+}
 
 export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
   const [name, setName] = useState("");
   const [type, setType] = useState("POSITIVE");
   const [loading, setLoading] = useState(false);
 
-  // Estados para los valores numéricos (los manejamos como string para el input)
+  // Estados RPG
   const [xp, setXp] = useState("20");
   const [gold, setGold] = useState("10");
   const [energy, setEnergy] = useState("10");
   const [hpPenalty, setHpPenalty] = useState("10");
 
-  // Resetear valores cuando se abre el modal
+  // 🆕 ESTADO PARA SUBTAREAS
+  const [subTasks, setSubTasks] = useState<SubTask[]>([]);
+
+  // Resetear valores al abrir
   useEffect(() => {
     if (visible) {
       setName("");
@@ -32,22 +44,58 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
       setGold("10");
       setEnergy("10");
       setHpPenalty("10");
+      setSubTasks([]); // Limpiamos subtareas
     }
   }, [visible]);
 
+  // --- LÓGICA DE SUBTAREAS ---
+  const addSubTask = () => {
+    setSubTasks([
+      ...subTasks,
+      { name: "", type: "CHECKLIST", targetValue: "" },
+    ]);
+  };
+
+  const removeSubTask = (index: number) => {
+    const updated = [...subTasks];
+    updated.splice(index, 1);
+    setSubTasks(updated);
+  };
+
+  const updateSubTask = (
+    index: number,
+    field: keyof SubTask,
+    value: string,
+  ) => {
+    const updated = [...subTasks];
+    // @ts-ignore
+    updated[index][field] = value;
+    setSubTasks(updated);
+  };
+  // ---------------------------
+
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      Alert.alert("Falta Nombre", "Por favor ponle un nombre a la misión.");
+      return;
+    }
 
     setLoading(true);
 
     const newHabit = {
-      name: name,
+      title: name, // Asegúrate que tu Backend espera 'title' o 'name'
       type: type,
-      // Convertimos los textos a números. Si está vacío, enviamos 0.
       xpReward: type === "POSITIVE" ? parseInt(xp) || 0 : 0,
       goldReward: type === "POSITIVE" ? parseInt(gold) || 0 : 0,
       hpPenalty: type === "NEGATIVE" ? parseInt(hpPenalty) || 0 : 0,
       energyCost: parseInt(energy) || 0,
+
+      // 🆕 ENVIAMOS LAS SUBTAREAS PROCESADAS
+      subTasks: subTasks.map((t) => ({
+        name: t.name,
+        type: t.type,
+        targetValue: parseInt(t.targetValue) || 1,
+      })),
     };
 
     await onCreate(newHabit);
@@ -62,19 +110,19 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
         style={styles.overlay}
       >
         <View style={styles.modalContainer}>
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Diseñar Misión</Text>
 
-            {/* Input Nombre */}
+            {/* Input Nombre Principal */}
             <Text style={styles.label}>Nombre de la Misión</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ej: Leer 10 páginas..."
+              placeholder="Ej: Rutina de Mañana..."
               value={name}
               onChangeText={setName}
             />
 
-            {/* Selector de Tipo */}
+            {/* Selector de Tipo (Bueno/Malo) */}
             <View style={styles.typeSelector}>
               <TouchableOpacity
                 style={[
@@ -97,13 +145,12 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* CAMPOS DINÁMICOS */}
+            {/* SECCIÓN DE STATS RPG */}
             <View style={styles.statsContainer}>
-              {/* Si es POSITIVO: XP y Oro */}
               {type === "POSITIVE" && (
                 <View style={styles.row}>
                   <View style={styles.col}>
-                    <Text style={styles.labelSmall}>XP (Experiencia)</Text>
+                    <Text style={styles.labelSmall}>XP (Exp)</Text>
                     <TextInput
                       style={styles.numInput}
                       value={xp}
@@ -112,7 +159,7 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
                     />
                   </View>
                   <View style={styles.col}>
-                    <Text style={styles.labelSmall}>Oro (Recompensa)</Text>
+                    <Text style={styles.labelSmall}>Oro ($)</Text>
                     <TextInput
                       style={styles.numInput}
                       value={gold}
@@ -123,7 +170,6 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
                 </View>
               )}
 
-              {/* Si es NEGATIVO: Daño de Vida */}
               {type === "NEGATIVE" && (
                 <View style={styles.row}>
                   <View style={styles.col}>
@@ -141,7 +187,6 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
                 </View>
               )}
 
-              {/* ENERGÍA (Siempre visible, pero cambia el texto) */}
               <View style={[styles.row, { marginTop: 10 }]}>
                 <View style={styles.col}>
                   <Text style={styles.labelSmall}>
@@ -159,7 +204,82 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
               </View>
             </View>
 
-            {/* Botones de Acción */}
+            {/* 🆕 SECCIÓN DE ETIQUETAS / SUBTAREAS */}
+            <Text style={[styles.label, { marginTop: 10 }]}>
+              Etiquetas / Subtareas
+            </Text>
+            <Text style={styles.labelSmall}>
+              Agrega pasos para completar este hábito.
+            </Text>
+
+            <View style={styles.subTasksList}>
+              {subTasks.map((task, index) => (
+                <View key={index} style={styles.subTaskRow}>
+                  {/* Input Nombre Subtarea */}
+                  <View style={{ flex: 1 }}>
+                    <TextInput
+                      style={styles.inputSmall}
+                      placeholder="Ej: Flexiones"
+                      value={task.name}
+                      onChangeText={(text) =>
+                        updateSubTask(index, "name", text)
+                      }
+                    />
+                    <View style={styles.rowCenter}>
+                      {/* Selector Tipo: Timer vs Reps */}
+                      <TouchableOpacity
+                        onPress={() =>
+                          updateSubTask(
+                            index,
+                            "type",
+                            task.type === "CHECKLIST" ? "TIMER" : "CHECKLIST",
+                          )
+                        }
+                        style={[
+                          styles.miniBadge,
+                          {
+                            backgroundColor:
+                              task.type === "CHECKLIST" ? "#2196F3" : "#FF9800",
+                          },
+                        ]}
+                      >
+                        <Text style={styles.miniBadgeText}>
+                          {task.type === "CHECKLIST" ? "# Reps" : "⏱ Min"}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Input Valor Meta */}
+                      <TextInput
+                        style={styles.inputTiny}
+                        placeholder="0"
+                        keyboardType="numeric"
+                        value={task.targetValue}
+                        onChangeText={(text) =>
+                          updateSubTask(index, "targetValue", text)
+                        }
+                      />
+                    </View>
+                  </View>
+
+                  {/* Botón Borrar */}
+                  <TouchableOpacity
+                    onPress={() => removeSubTask(index)}
+                    style={{ padding: 5 }}
+                  >
+                    <Ionicons name="trash-outline" size={22} color="#F44336" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.btnAddSub} onPress={addSubTask}>
+                <Ionicons name="add" size={20} color="#4CAF50" />
+                <Text style={{ color: "#4CAF50", fontWeight: "bold" }}>
+                  Agregar Etiqueta
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Botones Finales */}
             <View style={styles.actionRow}>
               <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
                 <Text style={{ color: "#666" }}>Cancelar</Text>
@@ -173,7 +293,7 @@ export default function CreateHabitModal({ visible, onClose, onCreate }: any) {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.whiteText}>CREAR</Text>
+                  <Text style={styles.whiteText}>CREAR MISIÓN</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -196,7 +316,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     elevation: 5,
-    maxHeight: "80%",
+    maxHeight: "90%", // Un poco más alto para que quepan las tareas
   },
   title: {
     fontSize: 22,
@@ -205,16 +325,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
-
   label: { fontSize: 14, fontWeight: "bold", color: "#555", marginBottom: 5 },
   labelSmall: { fontSize: 12, color: "#777", marginBottom: 2 },
-
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
     padding: 10,
-    marginBottom: 20,
+    marginBottom: 15,
     fontSize: 16,
     backgroundColor: "#FAFAFA",
   },
@@ -227,7 +345,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     backgroundColor: "#fff",
   },
-
   typeSelector: { flexDirection: "row", gap: 10, marginBottom: 20 },
   typeBtn: {
     flex: 1,
@@ -245,10 +362,57 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     padding: 15,
     borderRadius: 10,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   row: { flexDirection: "row", gap: 15 },
   col: { flex: 1 },
+
+  // Estilos Subtareas
+  subTasksList: { marginBottom: 20, marginTop: 5 },
+  subTaskRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#eee",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+  },
+  inputSmall: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginBottom: 5,
+    fontSize: 14,
+    paddingVertical: 2,
+  },
+  rowCenter: { flexDirection: "row", alignItems: "center", gap: 10 },
+  miniBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  miniBadgeText: { color: "white", fontSize: 10, fontWeight: "bold" },
+  inputTiny: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 4,
+    width: 50,
+    textAlign: "center",
+    paddingVertical: 2,
+    fontSize: 14,
+  },
+  btnAddSub: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    borderRadius: 8,
+    backgroundColor: "#F1F8E9",
+  },
 
   actionRow: {
     flexDirection: "row",

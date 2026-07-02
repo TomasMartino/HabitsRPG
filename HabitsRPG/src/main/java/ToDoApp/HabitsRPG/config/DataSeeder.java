@@ -1,9 +1,15 @@
 package ToDoApp.HabitsRPG.config;
 
+import ToDoApp.HabitsRPG.models.Enum.EffectType;
+import ToDoApp.HabitsRPG.models.Enum.EquipSlot;
+import ToDoApp.HabitsRPG.models.Enum.ItemType;
+import ToDoApp.HabitsRPG.models.Enum.Rarity;
 import ToDoApp.HabitsRPG.models.Habit;
 import ToDoApp.HabitsRPG.models.Player;
+import ToDoApp.HabitsRPG.models.ShopItem;
 import ToDoApp.HabitsRPG.repositories.HabitRepository;
 import ToDoApp.HabitsRPG.repositories.PlayerRepository;
+import ToDoApp.HabitsRPG.repositories.ShopItemRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,18 +18,18 @@ import org.springframework.context.annotation.Configuration;
 public class DataSeeder {
 
     @Bean
-    CommandLineRunner initDatabase(HabitRepository repository, PlayerRepository playerRepository) {
+    CommandLineRunner initDatabase(HabitRepository habitRepository, PlayerRepository playerRepository,
+                                   ShopItemRepository shopItemRepository) {
         return args -> {
             // 1. Crear el JUGADOR si no existe
             Player defaultPlayer;
             if (playerRepository.count() == 0) {
                 defaultPlayer = new Player();
-                defaultPlayer.setName("Tomas"); // Pon tu nombre aquí
+                defaultPlayer.setName("Tomas");
                 defaultPlayer.setHealth(100);
                 defaultPlayer.setEnergy(100);
-                defaultPlayer.setGold(0);
+                defaultPlayer.setGold(500); // Extra gold to test shop
 
-                // Nuevos campos de nivel
                 defaultPlayer.setLevel(1);
                 defaultPlayer.setXp(0);
                 defaultPlayer.setXpToNextLevel(100);
@@ -33,39 +39,110 @@ public class DataSeeder {
             } else {
                 defaultPlayer = playerRepository.findAll().get(0);
             }
-            if (repository.count() == 0) {
+
+            // 2. Crear HÁBITOS si no existen
+            if (habitRepository.count() == 0) {
                 Habit h1 = new Habit();
-                h1.setName("Estudiar 1 hora");
+                h1.setTitle("Estudiar 1 hora");
                 h1.setType("POSITIVE");
                 h1.setXpReward(50);
                 h1.setGoldReward(20);
                 h1.setEnergyCost(20);
 
                 Habit h2 = new Habit();
-                h2.setName("Hacer Ejercicio");
+                h2.setTitle("Hacer Ejercicio");
                 h2.setType("POSITIVE");
                 h2.setXpReward(40);
                 h2.setGoldReward(15);
                 h2.setEnergyCost(40);
 
                 Habit h3 = new Habit();
-                h3.setName("Comer Chatarra");
+                h3.setTitle("Comer Chatarra");
                 h3.setType("NEGATIVE");
                 h3.setHpPenalty(20);
                 h3.setEnergyCost(5);
 
                 Habit h4 = new Habit();
-                h4.setName("Procrastinar 2 horas");
+                h4.setTitle("Procrastinar 2 horas");
                 h4.setType("NEGATIVE");
-                h4.setHpPenalty(10); // Te duele en el progreso
-                h4.setEnergyCost(20); // ¡Pero te devuelve 20 de energía!
-                
-                repository.save(h1);
-                repository.save(h2);
-                repository.save(h3);
-                repository.save(h4);
-                System.out.println("Base de datos de hábitos inicializada.");
+                h4.setHpPenalty(10);
+                h4.setEnergyCost(20);
+
+                habitRepository.save(h1);
+                habitRepository.save(h2);
+                habitRepository.save(h3);
+                habitRepository.save(h4);
+                System.out.println("✅ Base de datos de hábitos inicializada.");
+            }
+
+            // 3. Crear ÍTEMS DE LA TIENDA si no existen
+            if (shopItemRepository.count() == 0) {
+                shopItemRepository.save(createShopItem(
+                        "Poción de Salud", "Recupera 20 puntos de salud al instante.",
+                        ItemType.CONSUMABLE, Rarity.COMMON, 50, 0,
+                        EffectType.HEAL, 20, null, null, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Poción de Energía", "Restaura 30 puntos de energía.",
+                        ItemType.CONSUMABLE, Rarity.COMMON, 40, 0,
+                        EffectType.ENERGY, 30, null, null, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Elixir del Héroe", "Recupera toda la salud y la energía al máximo.",
+                        ItemType.CONSUMABLE, Rarity.RARE, 100, 0,
+                        EffectType.HEAL, 100, null, null, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Túnica del Aventurero", "Una túnica resistente para tus aventuras diarias.",
+                        ItemType.COSMETIC, Rarity.UNCOMMON, 200, 0,
+                        EffectType.COSMETIC, 0, EquipSlot.SKIN, null, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Capa de las Sombras", "Una capa oscura que otorga un aspecto sigiloso.",
+                        ItemType.COSMETIC, Rarity.UNCOMMON, 300, 0,
+                        EffectType.COSMETIC, 0, EquipSlot.ACCESSORY_1, null, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Amuleto del Fénix", "Otorga el doble de XP durante 24 horas.",
+                        ItemType.BOOST, Rarity.RARE, 150, 0,
+                        EffectType.XP_BOOST, 2, null, 24, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Corona del Héroe", "Una corona dorada digna de un verdadero campeón.",
+                        ItemType.COSMETIC, Rarity.EPIC, 500, 0,
+                        EffectType.COSMETIC, 0, EquipSlot.SKIN, null, null, true, null));
+
+                shopItemRepository.save(createShopItem(
+                        "Botas de Velocidad", "Botas ligeras que reflejan tu velocidad y dedicación.",
+                        ItemType.COSMETIC, Rarity.UNCOMMON, 250, 0,
+                        EffectType.COSMETIC, 0, EquipSlot.ACCESSORY_2, null, null, true, null));
+
+                System.out.println("✅ Tienda inicializada con 8 ítems.");
             }
         };
+    }
+
+    private ShopItem createShopItem(String name, String description,
+                                     ItemType itemType, Rarity rarity,
+                                     int priceGold, int priceGems,
+                                     EffectType effectType, int effectValue,
+                                     EquipSlot equipSlot, Integer durationHours,
+                                     String imageUrl, boolean isPurchasable,
+                                     Integer maxOwned) {
+        ShopItem item = new ShopItem();
+        item.setName(name);
+        item.setDescription(description);
+        item.setItemType(itemType);
+        item.setRarity(rarity);
+        item.setPriceGold(priceGold);
+        item.setPriceGems(priceGems);
+        item.setEffectType(effectType);
+        item.setEffectValue(effectValue);
+        item.setEquipSlot(equipSlot);
+        item.setDurationHours(durationHours);
+        item.setImageUrl(imageUrl);
+        item.setPurchasable(isPurchasable);
+        item.setMaxOwned(maxOwned);
+        return item;
     }
 }

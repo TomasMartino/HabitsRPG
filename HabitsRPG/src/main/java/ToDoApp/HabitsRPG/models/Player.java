@@ -3,6 +3,7 @@ package ToDoApp.HabitsRPG.models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "players")
@@ -19,6 +20,11 @@ public class Player {
     private int gold = 0;
     private int lives = 3;
 
+    private int gems = 0;
+
+    @Version
+    private Integer version;
+
     // --- CAMBIOS IMPORTANTES PARA EL LEVEL UP ---
 
     // 1. Ahora el nivel se guarda en la DB, no se calcula al vuelo
@@ -31,6 +37,23 @@ public class Player {
     @Column(name = "xp_to_next_level")
     @JsonProperty("xpToNextLevel")
     private int xpToNextLevel = 100;
+
+    // --- Timestamps ---
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 
     /**
      * Lógica inteligente para ganar experiencia.
